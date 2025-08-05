@@ -73,7 +73,7 @@ function Home() {
             </div>
             <div className="w-full max-w-2xl">
                 {game.board.map((row, rowIndex) => (
-                    <div key={rowIndex} className="flex w-full">
+                    <div key={rowIndex} className="flex w-full box-border">
                         {row.map((cell, colIndex) => {
                             // Determine cell type for background and content
                             let cellClass = "flex-1 aspect-square border flex items-center justify-center ";
@@ -81,7 +81,7 @@ function Home() {
                             if (cell === 'wall') {
                                 cellClass += 'bg-gray-800';
                             } else if (typeof cell === 'object' && cell !== null && cell.type === 'fire') {
-                                cellClass += 'bg-orange-400 border-2 border-red-600';
+                                cellClass += 'bg-orange-400 border-red-600';
                             } else if (cell === null || (typeof cell === 'string' && !cell.startsWith('player'))) {
                                 cellClass += 'bg-white';
                             }
