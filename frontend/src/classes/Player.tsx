@@ -25,10 +25,13 @@ export default class Player {
             return false;
         }
         
-        // Check if there's another player (optional - you might want to allow this)
-        if (board[newY][newX] !== null && board[newY][newX] !== 'wall') {
+        // Check if there's another player at that position
+        const cell = board[newY][newX];
+        if (typeof cell === 'string' && cell.startsWith('player') && cell !== this.id) {
             return false;
         }
+        
+        // Allow movement over bombs, fire, and empty spaces
         return true;
     }
 
@@ -77,12 +80,21 @@ export default class Player {
         }
         // Check if the move is valid and actually different from current position
         if (this.canMoveTo(board, newX, newY) && (newX !== oldX || newY !== oldY)) {
-            // Update the board state using a function as expected by plantBomb
+            // Update the board state
             updateBoard((prevBoard) => {
                 const newBoard = prevBoard.map(row => [...row]);
-                // Remove player from old position
-                newBoard[oldY][oldX] = "";
-                // Place player in new position
+                
+                // Handle old position - if there was a bomb there, keep it; otherwise clear it
+                const oldCell = newBoard[oldY][oldX];
+                if (typeof oldCell === 'object' && oldCell !== null && oldCell.type === 'bomb') {
+                    // Player is moving away from a bomb - keep the bomb
+                    // Don't change the old position since it has the bomb
+                } else {
+                    // Clear old position
+                    newBoard[oldY][oldX] = "" as any;
+                }
+                
+                // Place player in new position, overriding whatever was there
                 newBoard[newY][newX] = this.id;
                 return newBoard;
             });
@@ -107,23 +119,44 @@ export default class Player {
         }
         if (x === -1 || y === -1) return;
 
-        // Only plant if cell is empty (should always be true for player position)
+        // Check if there's already a bomb at this position
+        const currentCell = board[y][x];
+        if (typeof currentCell === 'object' && currentCell !== null && currentCell.type === 'bomb') {
+            return; // Can't plant bomb where there's already one
+        }
+
+        // Store the bomb position for explosion logic
+        const bombX = x;
+        const bombY = y;
+        const playerId = this.id;
+
+        // Add bomb to board state
         updateBoard((prevBoard: (string | { type: string; owner?: string })[][]) => {
-            if (prevBoard[y][x] !== this.id) return prevBoard;
             const newBoard = prevBoard.map(row => [...row]);
-            newBoard[y][x] = { type: "bomb", owner: this.id };
+            newBoard[bombY][bombX] = { type: "bomb", owner: this.id };
             return newBoard;
         });
 
         // After 2s, explode bomb
         setTimeout(() => {
             updateBoard((prevBoard: (string | { type: string; owner?: string })[][]) => {
-                const cell = prevBoard[y][x];
+                const cell = prevBoard[bombY][bombX];
                 if (!cell || !(typeof cell === 'object' && cell.type === "bomb")) return prevBoard;
-                // Cast board for fire propagation (ignore bomb/fire cells)
-                const castBoard = prevBoard.map(row => row.map(cell => (typeof cell === 'string' || cell === null) ? cell : null)) as (string | null)[][];
-                const fireCoords = Bomb.getFireCross(x, y, castBoard);
+                
+                // Cast board for fire propagation
+                const castBoard = prevBoard.map(row => row.map(cell => {
+                    if (typeof cell === 'string') return cell;
+                    if (cell === null) return null;
+                    return null;
+                })) as (string | null)[][];
+                
+                const fireCoords = Bomb.getFireCross(bombX, bombY, castBoard);
                 const newBoard = prevBoard.map(row => [...row]);
+                
+                // Clear bomb position
+                newBoard[bombY][bombX] = "" as any;
+                
+                // Add fire at explosion coordinates
                 for (const [fx, fy] of fireCoords) {
                     if (newBoard[fy][fx] !== 'wall') {
                         newBoard[fy][fx] = { type: "fire" };
@@ -131,6 +164,7 @@ export default class Player {
                 }
                 return newBoard;
             });
+            
             // After another 2s, clear fire
             setTimeout(() => {
                 updateBoard((prevBoard: (string | { type: string; owner?: string })[][]) => {
@@ -139,7 +173,7 @@ export default class Player {
                         for (let fx = 0; fx < newBoard[fy].length; fx++) {
                             const cell = newBoard[fy][fx];
                             if (typeof cell === 'object' && cell !== null && cell.type === "fire") {
-                                newBoard[fy][fx] = null as any;
+                                newBoard[fy][fx] = "" as any;
                             }
                         }
                     }
