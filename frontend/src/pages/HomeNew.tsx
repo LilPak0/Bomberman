@@ -1,9 +1,12 @@
-import { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useGameState } from '../hook/useGameState';
 import { GameBoard } from '../components/GameBoard';
 
 function HomeNew() {
     const { gameState, movePlayer, triggerUpdate } = useGameState();
+    // Timer state
+    const [elapsedSeconds, setElapsedSeconds] = React.useState(0);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
     const lastMoveTime = useRef<{ [playerId: string]: number }>({});
     const keysPressed = useRef<Set<string>>(new Set());
     const MOVE_DELAY = 150;
@@ -26,6 +29,16 @@ function HomeNew() {
             window.removeEventListener('keyup', handleKeyUp);
         };
     }, [handleKeyDown, handleKeyUp]);
+
+    // Timer effect
+    useEffect(() => {
+        timerRef.current = setInterval(() => {
+            setElapsedSeconds((prev) => prev + 1);
+        }, 1000);
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
+    }, []);
 
     // Movement update loop
     useEffect(() => {
@@ -82,7 +95,9 @@ function HomeNew() {
                         </div>
                     </div>
                 ))}
-                <div className="text-2xl font-bold">00:00</div>
+                <div className="text-2xl font-bold">
+                    {String(Math.floor(elapsedSeconds / 60)).padStart(2, '0')}:{String(elapsedSeconds % 60).padStart(2, '0')}
+                </div>
             </div>
             
             <GameBoard 

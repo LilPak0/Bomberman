@@ -175,6 +175,24 @@ export class GameStateManager {
       }
     }
 
+    // Bomb collision logic: allow player to stand on their own bomb, but not walk onto any bomb after leaving it
+    // Find if there is a bomb at the target position
+    const bombAtTarget = Array.from(this.bombs.values()).find(bomb => bomb.position.x === x && bomb.position.y === y);
+    if (bombAtTarget) {
+      // Get the player trying to move
+      if (excludePlayerId) {
+        const player = this.players.get(excludePlayerId);
+        if (player) {
+          // If player is currently standing on the bomb, allow movement (i.e., moving off the bomb)
+          if (player.position.x === x && player.position.y === y) {
+            return true;
+          }
+        }
+      }
+      // Otherwise, block movement onto bombs
+      return false;
+    }
+
     return true;
   }
 
